@@ -4,6 +4,7 @@ package app
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -107,6 +108,10 @@ func (application App) Status(targets []string, override string) ([]StatusItem, 
 		}
 		target, err := safeio.Open(path, true)
 		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				items = append(items, item)
+				continue
+			}
 			return nil, fmt.Errorf("open %s status target: %w", targetName, err)
 		}
 		data, exists, _, readErr := target.Read()

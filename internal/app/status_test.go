@@ -66,3 +66,37 @@ func TestStatusReportsSynchronizedAndModifiedTargets(t *testing.T) {
 		t.Errorf("Status([cursor], \"\") after modification state = %q, want modified", got)
 	}
 }
+
+func TestStatusReportsMissingWhenManagedTargetParentDisappears(t *testing.T) {
+	workspace := t.TempDir()
+	userHome := filepath.Join(workspace, "user-home")
+	root := filepath.Join(workspace, "mcm-root")
+	location := manifest.NewLocation(userHome, root, "")
+	if err := location.Init(); err != nil {
+		t.Fatalf("Init() error: %v", err)
+	}
+	if err := location.Save(manifest.Config{Version: 1, Servers: map[string]manifest.Server{
+		"local": {Transport: manifest.TransportStdio, Command: "local-server"},
+	}}); err != nil {
+		t.Fatalf("Save() error: %v", err)
+	}
+	targetPath := filepath.Join(userHome, ".cursor", "mcp.json")
+	if err := os.MkdirAll(filepath.Dir(targetPath), 0o700); err != nil {
+		t.Fatalf("create cursor directory: %v", err)
+	}
+	application := New(userHome, location)
+	if _, err := application.Apply([]string{"cursor"}, ""); err != nil {
+		t.Fatalf("Apply() error: %v", err)
+	}
+	if err := os.RemoveAll(filepath.Dir(targetPath)); err != nil {
+		t.Fatalf("remove managed target parent: %v", err)
+	}
+
+	items, err := application.Status([]string{"cursor"}, "")
+	if err != nil {
+		t.Fatalf("Status() error: %v", err)
+	}
+	if len(items) != 1 || items[0].State != "missing" {
+		t.Errorf("Status() = %#v, want one missing item", items)
+	}
+}

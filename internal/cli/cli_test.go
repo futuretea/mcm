@@ -43,3 +43,28 @@ func TestRunRejectsGlobalFlagAfterCommand(t *testing.T) {
 		t.Fatalf("Run(init --home %q) exit code = 0, want nonzero", root)
 	}
 }
+
+func TestRunRejectsInvalidDefaultHomeBeforeEveryCommand(t *testing.T) {
+	for _, args := range [][]string{
+		{"init"},
+		{"validate"},
+		{"server", "list"},
+		{"plan", "--target", "cursor"},
+		{"apply", "--target", "cursor", "--yes"},
+		{"status", "--target", "cursor"},
+		{"recover"},
+	} {
+		t.Run(args[0], func(t *testing.T) {
+			workspace := t.TempDir()
+			t.Chdir(workspace)
+			var out bytes.Buffer
+			var errOut bytes.Buffer
+			if exitCode := Run(args, "", strings.NewReader(""), &out, &errOut); exitCode != 2 {
+				t.Fatalf("Run(%q) exit code = %d, want 2; stderr: %s", args, exitCode, errOut.String())
+			}
+			if _, err := os.Lstat(filepath.Join(workspace, ".mcm")); !errors.Is(err, os.ErrNotExist) {
+				t.Errorf("MCM root exists after Run(%q): %v", args, err)
+			}
+		})
+	}
+}

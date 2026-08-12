@@ -2,8 +2,8 @@ package cli
 
 import (
 	"bytes"
-	"reflect"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 

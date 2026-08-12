@@ -42,6 +42,12 @@ func NewLocation(userHome, homeOverride, configOverride string) Location {
 
 // Init creates only MCM-owned private directories and a new manifest.
 func (location Location) Init() error {
+	if !filepath.IsAbs(location.Root) {
+		return fmt.Errorf("mcm root must be absolute")
+	}
+	if !filepath.IsAbs(location.ConfigPath) {
+		return fmt.Errorf("manifest path must be absolute")
+	}
 	if err := ensurePrivateDirectory(location.Root, true); err != nil {
 		return fmt.Errorf("initialize mcm root: %w", err)
 	}

@@ -130,18 +130,12 @@ func (store Store) WriteIntent(intent Intent) error {
 
 // RemoveIntent removes an intent after its corresponding state commit.
 func (store Store) RemoveIntent(target string) error {
-	path := store.intentPath(target)
-	info, err := os.Lstat(path)
-	if errors.Is(err, os.ErrNotExist) {
-		return nil
-	}
+	intent, err := safeio.Open(store.intentPath(target), true)
 	if err != nil {
 		return err
 	}
-	if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
-		return fmt.Errorf("journal intent is not a regular file")
-	}
-	return os.Remove(path)
+	defer intent.Close()
+	return intent.Remove()
 }
 
 // Recover reconciles journal intents by writing only MCM state; it never writes native targets.

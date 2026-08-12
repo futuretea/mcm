@@ -231,6 +231,27 @@ func (target *Target) Create(data []byte) error {
 	return nil
 }
 
+// Remove deletes a regular final entry and durably records the removal.
+func (target *Target) Remove() error {
+	if target == nil || target.closed {
+		return fmt.Errorf("target is closed")
+	}
+	_, exists, _, err := target.Read()
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return nil
+	}
+	if err := unix.Unlinkat(target.dirFD, target.name, 0); err != nil {
+		return fmt.Errorf("remove target: %w", err)
+	}
+	if err := unix.Fsync(target.dirFD); err != nil {
+		return fmt.Errorf("sync target directory: %w", err)
+	}
+	return nil
+}
+
 func (target *Target) createTemp() (string, int, error) {
 	for range 16 {
 		var suffix [8]byte

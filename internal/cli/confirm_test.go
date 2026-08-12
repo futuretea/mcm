@@ -63,3 +63,32 @@ func TestRunApplyInteractiveDeclineDoesNotWrite(t *testing.T) {
 		t.Errorf("cursor target exists after declined apply: stat %q error = %v, want not exist", targetPath, err)
 	}
 }
+
+func TestRunApplyYesPrintsRaceWarning(t *testing.T) {
+	userHome := t.TempDir()
+	root := filepath.Join(t.TempDir(), "mcm-root")
+	targetPath := filepath.Join(userHome, ".cursor", "mcp.json")
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+
+	if exitCode := Run([]string{"--home", root, "init"}, userHome, strings.NewReader(""), &out, &errOut); exitCode != 0 {
+		t.Fatalf("Run(init) exit code = %d, want 0; stderr: %s", exitCode, errOut.String())
+	}
+	out.Reset()
+	errOut.Reset()
+	if exitCode := Run([]string{"--home", root, "server", "add", "--name", "local", "--command", "node"}, userHome, strings.NewReader(""), &out, &errOut); exitCode != 0 {
+		t.Fatalf("Run(server add) exit code = %d, want 0; stderr: %s", exitCode, errOut.String())
+	}
+	if err := os.MkdirAll(filepath.Dir(targetPath), 0o700); err != nil {
+		t.Fatalf("create cursor parent: %v", err)
+	}
+
+	out.Reset()
+	errOut.Reset()
+	if exitCode := Run([]string{"--home", root, "apply", "--target", "cursor", "--yes"}, userHome, strings.NewReader(""), &out, &errOut); exitCode != 0 {
+		t.Fatalf("Run(apply --yes) exit code = %d, want 0; stderr: %s", exitCode, errOut.String())
+	}
+	if !strings.Contains(out.String(), "external writers can change a target") {
+		t.Errorf("Run(apply --yes) stdout = %q, want race-window warning", out.String())
+	}
+}
