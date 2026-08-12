@@ -1,0 +1,16 @@
+id,dimension,item,finding,value,unit,source_ids,confidence
+format-standard-json,schema,cross-client,"Cursor, Claude Code project config, Qoder, philschmid/mcp-cli, and mcpc consumption use a top-level mcpServers map.","mcpServers",schema,"1;3;7;10;11",high
+format-vscode,schema,vs-code,"VS Code mcp.json uses a top-level servers map rather than mcpServers.","servers",schema,"2",medium
+format-codex,schema,codex,"Codex uses TOML tables named mcp_servers.<id>.","mcp_servers.<id>",schema,"4;5",medium
+format-opencode,schema,opencode,"OpenCode v2 nests local and remote server entries under mcp.servers.","mcp.servers",schema,"8;9",high
+cursor,target,cursor,"Global user configuration is ~/.cursor/mcp.json; project configuration is .cursor/mcp.json.","~/.cursor/mcp.json",path,"1",medium
+cursor,schema,stdio,"A Cursor stdio mcpServers entry requires type set to stdio and a command; args are optional.","type:stdio; command; args",fields,"1",medium
+claude-code,target,claude-code,"User-scope servers are stored in ~/.claude.json; project scope uses .mcp.json.","~/.claude.json",path,"3",medium
+codex,target,codex,"User configuration is ~/.codex/config.toml; project overrides are .codex/config.toml for trusted projects.","~/.codex/config.toml",path,"4;5",medium
+vs-code,target,vs-code,"The user configuration belongs to the active VS Code user profile; the supported workspace file is .vscode/mcp.json.","user profile",location,"2",medium
+qoder-cli,target,qoder-cli,"User-scope MCP entries live under mcpServers in ~/.qoder/settings.json.","~/.qoder/settings.json",path,"6;7",medium
+qoder-ide,target,qoder-ide,"MCP uses the mcpServers JSON shape. The required output path ~/.qoder/mcp.json is a user-confirmed project constraint; public IDE docs do not state that path.","~/.qoder/mcp.json",path,"12;13",low
+opencode,target,opencode,"OpenCode v2 loads one global configuration from ~/.config/opencode/opencode.json or opencode.jsonc; if both exist, MCM must require an explicit path rather than guess precedence.","~/.config/opencode/opencode.json(c)",path,"8",high
+mcpc,mode,mcpc,"mcpc consumes an explicit standard JSON config file or auto-discovers known config files; its own persistent files are sessions and OAuth profiles.","export and connect",integration,"10",medium
+philschmid-mcp-cli,target,mcp-cli,"mcp-cli searches mcp_servers.json in the current directory, ~/.mcp_servers.json, then ~/.config/mcp/mcp_servers.json.","~/.config/mcp/mcp_servers.json",path,"11",medium
+transport-core,transport,scope,"MCM v1 accepts only local stdio and Streamable HTTP. Legacy HTTP+SSE is deprecated by MCP and WebSocket is outside the user-confirmed scope.","stdio;streamable-http",transport,"4;10;15",high
