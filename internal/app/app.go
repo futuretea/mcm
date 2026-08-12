@@ -177,6 +177,9 @@ func (application App) Plan(targets []string, override string) ([]PlanItem, erro
 		}
 		target, err := safeio.Open(path, true)
 		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				return nil, fmt.Errorf("open %s target: create parent directory %s, then retry: %w", targetName, filepath.Dir(path), err)
+			}
 			return nil, fmt.Errorf("open %s target: %w", targetName, err)
 		}
 		if openCodeDefault {

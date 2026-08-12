@@ -64,7 +64,7 @@ func TestRunApplyInteractiveDeclineDoesNotWrite(t *testing.T) {
 	}
 }
 
-func TestRunApplyYesPrintsRaceWarning(t *testing.T) {
+func TestRunApplyYesWritesRaceWarningToStderr(t *testing.T) {
 	userHome := t.TempDir()
 	root := filepath.Join(t.TempDir(), "mcm-root")
 	targetPath := filepath.Join(userHome, ".cursor", "mcp.json")
@@ -88,7 +88,10 @@ func TestRunApplyYesPrintsRaceWarning(t *testing.T) {
 	if exitCode := Run([]string{"--home", root, "apply", "--target", "cursor", "--yes"}, userHome, strings.NewReader(""), &out, &errOut); exitCode != 0 {
 		t.Fatalf("Run(apply --yes) exit code = %d, want 0; stderr: %s", exitCode, errOut.String())
 	}
-	if !strings.Contains(out.String(), "external writers can change a target") {
-		t.Errorf("Run(apply --yes) stdout = %q, want race-window warning", out.String())
+	if !strings.Contains(errOut.String(), "external writers can change a target") {
+		t.Errorf("Run(apply --yes) stderr = %q, want race-window warning", errOut.String())
+	}
+	if strings.Contains(out.String(), "external writers can change a target") {
+		t.Errorf("Run(apply --yes) stdout = %q, want no race-window warning", out.String())
 	}
 }

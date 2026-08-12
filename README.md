@@ -41,6 +41,8 @@ mcm status --target cursor --target codex
 
 Interactive `apply` asks for one `yes` confirmation. Non-interactive usage requires `--yes`.
 
+Use `mcm --help` or `mcm <command> --help` to discover commands and flags. `server add` only creates a new name; use `server update` to replace an existing definition.
+
 ## Global manifest location flags
 
 Global flags appear before the command:
@@ -100,3 +102,4 @@ targets:
 - It rejects unmanaged native entries with the same server name rather than claiming ownership.
 - `recover` only reconciles MCM ownership state from its journal; it never writes a native client configuration.
 - MCM rechecks the manifest and target content before a write. A non-cooperating external writer can still modify a file after that last check and before rename; MCM warns on every apply and does not claim to eliminate that platform-level window.
+- MCM reserializes selected native configuration files when it writes them. Existing formatting and JSONC comments may change; `plan` and `apply` warn before writing.

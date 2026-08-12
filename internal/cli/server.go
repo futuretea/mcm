@@ -21,18 +21,54 @@ type serverInput struct {
 
 func runServer(args []string, location manifest.Location, in io.Reader, out, errOut io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprintln(errOut, "server requires list or add")
+		fmt.Fprintln(errOut, "server requires list, add, or update")
 		return 2
 	}
 	switch args[0] {
+	case "--help", "help":
+		printServerHelp(out)
+		return 0
 	case "list":
+		if isHelp(args[1:]) {
+			printServerHelp(out)
+			return 0
+		}
 		return runServerList(args[1:], location, out, errOut)
 	case "add":
-		return runServerAdd(args[1:], location, in, out, errOut)
+		if isHelp(args[1:]) {
+			printServerHelp(out)
+			return 0
+		}
+		return runServerWrite(args[1:], location, in, out, errOut, false)
+	case "update":
+		if isHelp(args[1:]) {
+			printServerHelp(out)
+			return 0
+		}
+		return runServerWrite(args[1:], location, in, out, errOut, true)
 	default:
-		fmt.Fprintln(errOut, "server requires list or add")
+		fmt.Fprintln(errOut, "server requires list, add, or update")
 		return 2
 	}
+}
+
+func isHelp(args []string) bool {
+	return len(args) == 1 && args[0] == "--help"
+}
+
+func printServerHelp(out io.Writer) {
+	fmt.Fprint(out, `Usage: mcm server <command> [flags]
+
+Commands:
+  add      Add a new server. Fails if the name already exists.
+  update   Replace an existing server. Fails if the name does not exist.
+  list     List server names.
+
+Server flags:
+  --name NAME
+  --command COMMAND [--arg ARG ...]
+  --url URL
+`)
 }
 
 func runServerList(args []string, location manifest.Location, out, errOut io.Writer) int {
@@ -51,31 +87,35 @@ func runServerList(args []string, location manifest.Location, out, errOut io.Wri
 	return 0
 }
 
-func runServerAdd(args []string, location manifest.Location, in io.Reader, out, errOut io.Writer) int {
-	input, err := parseServerInput(args)
+func runServerWrite(args []string, location manifest.Location, in io.Reader, out, errOut io.Writer, update bool) int {
+	command := "add"
+	if update {
+		command = "update"
+	}
+	input, err := parseServerInput(args, command)
 	if err != nil {
 		fmt.Fprintln(errOut, err)
 		return 2
 	}
 	if input.conflicts() {
-		fmt.Fprintln(errOut, "server add requires --name and exactly one of --command or --url")
+		fmt.Fprintf(errOut, "server %s requires --name and exactly one of --command or --url\n", command)
 		return 2
 	}
 	if input.incomplete() && isTerminal(in) {
 		input, err = promptMissingServerFields(in, out, input)
 		if err != nil {
-			fmt.Fprintln(errOut, "server add cancelled")
+			fmt.Fprintf(errOut, "server %s cancelled\n", command)
 			return 1
 		}
 	}
 	if input.incomplete() || input.conflicts() {
-		fmt.Fprintln(errOut, "server add requires --name and exactly one of --command or --url")
+		fmt.Fprintf(errOut, "server %s requires --name and exactly one of --command or --url\n", command)
 		return 2
 	}
-	return saveServer(location, input, out, errOut)
+	return saveServer(location, input, out, errOut, update)
 }
 
-func parseServerInput(args []string) (serverInput, error) {
+func parseServerInput(args []string, command string) (serverInput, error) {
 	input := serverInput{}
 	for index := 0; index < len(args); index++ {
 		if index+1 >= len(args) {
@@ -92,7 +132,7 @@ func parseServerInput(args []string) (serverInput, error) {
 		case "--arg":
 			input.args = append(input.args, value)
 		default:
-			return serverInput{}, fmt.Errorf("unknown server add flag %q", args[index])
+			return serverInput{}, fmt.Errorf("unknown server %s flag %q", command, args[index])
 		}
 		index++
 	}
@@ -165,7 +205,7 @@ func promptMissingServerFields(in io.Reader, out io.Writer, input serverInput) (
 	}
 }
 
-func saveServer(location manifest.Location, input serverInput, out, errOut io.Writer) int {
+func saveServer(location manifest.Location, input serverInput, out, errOut io.Writer, update bool) int {
 	lock, err := safeio.AcquireLock(filepath.Join(location.Root, "lock"))
 	if err != nil {
 		fmt.Fprintln(errOut, err)
@@ -179,6 +219,15 @@ func saveServer(location manifest.Location, input serverInput, out, errOut io.Wr
 	}
 	if config.Servers == nil {
 		config.Servers = map[string]manifest.Server{}
+	}
+	_, exists := config.Servers[input.name]
+	if update && !exists {
+		fmt.Fprintf(errOut, "server %q not found; use \"mcm server add\" to create it\n", input.name)
+		return 1
+	}
+	if !update && exists {
+		fmt.Fprintf(errOut, "server %q already exists; use \"mcm server update\" to replace it\n", input.name)
+		return 1
 	}
 	server := manifest.Server{Command: input.command, Args: input.args}
 	if input.command != "" {

@@ -41,6 +41,8 @@ mcm status --target cursor --target codex
 
 交互式 `apply` 会请求一次 `yes` 确认。非交互环境必须传入 `--yes`。
 
+可使用 `mcm --help` 或 `mcm <command> --help` 查看命令和参数。`server add` 只创建新名称；替换已有 server 定义请使用 `server update`。
+
 ## 全局清单路径参数
 
 全局参数位于命令之前：
@@ -100,3 +102,4 @@ targets:
 - 如果原生配置中存在同名但未由 MCM 管理的 server，MCM 会拒绝写入，而不会声称拥有它。
 - `recover` 只根据 journal 调和 MCM 的所有权 state；它绝不会写入原生客户端配置。
 - MCM 会在写入前重新检查清单和目标文件内容。不合作的外部写入者仍可能在最后一次检查后、rename 前修改文件；MCM 会在每次 apply 时警告，且不声称能够消除这个平台级窗口。
+- MCM 写入时会重新序列化选中的原生配置文件。已有格式和 JSONC 注释可能变化；`plan` 与 `apply` 会在写入前给出警告。

@@ -24,6 +24,9 @@ func Run(args []string, userHome string, in io.Reader, out, errOut io.Writer) in
 		fmt.Fprintln(errOut, "a command is required")
 		return 2
 	}
+	if printHelp(command, rest, out) {
+		return 0
+	}
 	if command == "recover" && options.config != "" {
 		fmt.Fprintln(errOut, "recover does not accept --config")
 		return 2
@@ -78,6 +81,48 @@ func Run(args []string, userHome string, in io.Reader, out, errOut io.Writer) in
 	}
 }
 
+func printHelp(command string, args []string, out io.Writer) bool {
+	if command == "--help" || command == "help" {
+		printRootHelp(out)
+		return true
+	}
+	if len(args) != 1 || args[0] != "--help" {
+		return false
+	}
+	switch command {
+	case "server":
+		printServerHelp(out)
+	case "init", "validate", "recover":
+		fmt.Fprintf(out, "Usage: mcm %s\n", command)
+	case "plan", "status":
+		fmt.Fprintf(out, "Usage: mcm %s --target TARGET [--target TARGET ...] [--path FILE]\n", command)
+	case "apply":
+		fmt.Fprint(out, "Usage: mcm apply --target TARGET [--target TARGET ...] [--path FILE] [--yes]\n")
+	default:
+		return false
+	}
+	return true
+}
+
+func printRootHelp(out io.Writer) {
+	fprint := fmt.Fprint
+	fprint(out, `Usage: mcm [--home DIR] [--config FILE] <command> [flags]
+
+Commands:
+  init                 Create the MCM manifest and private state directories.
+  validate             Validate the MCM manifest.
+  server add           Add a server to the manifest.
+  server update        Replace an existing server definition.
+  server list          List manifest server names.
+  plan                 Preview changes for explicit client targets.
+  apply                Write changes for explicit client targets.
+  status               Report file-level target synchronization state.
+  recover              Reconcile unfinished MCM state writes.
+
+Run "mcm server --help" for server command usage.
+`)
+}
+
 type globalOptions struct {
 	home   string
 	config string
@@ -126,21 +171,26 @@ func runTargetCommand(command string, args []string, userHome string, location m
 			return 1
 		}
 		printPlan(out, items)
+		printReserializationWarnings(errOut, items)
 		return 0
 	case "apply":
-		fmt.Fprintln(out, "warning: external writers can change a target after final verification and before rename")
-		var preview []app.PlanItem
+		fmt.Fprintln(errOut, "warning: external writers can change a target after final verification and before rename")
+		if !yes && !isTerminal(in) {
+			fmt.Fprintln(errOut, "apply requires --yes in non-interactive mode")
+			return 2
+		}
+		if err := application.Recover(); err != nil {
+			fmt.Fprintln(errOut, err)
+			return 1
+		}
+		preview, err := application.Plan(targets, path)
+		if err != nil {
+			fmt.Fprintln(errOut, err)
+			return 1
+		}
+		printPlan(out, preview)
+		printReserializationWarnings(errOut, preview)
 		if !yes {
-			if !isTerminal(in) {
-				fmt.Fprintln(errOut, "apply requires --yes in non-interactive mode")
-				return 2
-			}
-			items, err := application.Plan(targets, path)
-			if err != nil {
-				fmt.Fprintln(errOut, err)
-				return 1
-			}
-			printPlan(out, items)
 			fmt.Fprint(out, "Apply these changes? [yes/no]: ")
 			answer, err := bufio.NewReader(in).ReadString('\n')
 			if err != nil && len(answer) == 0 {
@@ -151,20 +201,13 @@ func runTargetCommand(command string, args []string, userHome string, location m
 				fmt.Fprintln(errOut, "confirmation cancelled")
 				return 1
 			}
-			preview = items
 		}
-		var items []app.PlanItem
-		var err error
-		if preview != nil {
-			items, err = application.ApplyPlanned(preview)
-		} else {
-			items, err = application.Apply(targets, path)
-		}
+		items, err := application.ApplyPlanned(preview)
 		if err != nil {
 			fmt.Fprintln(errOut, err)
 			return 1
 		}
-		printPlan(out, items)
+		fmt.Fprintln(out, "applied")
 		for _, item := range items {
 			if item.Target != "mcpc" {
 				continue
@@ -195,6 +238,15 @@ func runTargetCommand(command string, args []string, userHome string, location m
 		return 0
 	default:
 		return 2
+	}
+}
+
+func printReserializationWarnings(errOut io.Writer, items []app.PlanItem) {
+	for _, item := range items {
+		if item.Target == "mcpc" {
+			continue
+		}
+		fmt.Fprintf(errOut, "warning: %s is reserialized as native JSON, JSONC, or TOML; existing formatting and comments may change\n", item.Path)
 	}
 }
 
