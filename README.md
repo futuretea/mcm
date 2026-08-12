@@ -24,6 +24,16 @@ The repository pins Go 1.26.5 in `.tool-versions`.
 go build ./cmd/mcm
 ```
 
+## Docker E2E
+
+Run the Linux end-to-end suite in a clean Docker build:
+
+```bash
+docker build --target e2e .
+```
+
+The suite builds and invokes the real `mcm` binary with an isolated `HOME`. It covers the public CLI workflow, all supported target files, and stdout/stderr warning contracts without mounting any host configuration.
+
 ## First use
 
 ```bash

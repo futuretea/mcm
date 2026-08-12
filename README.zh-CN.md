@@ -24,6 +24,16 @@ MCM 仅接受公开的 `command`、`args` 和 `url` 值。不要在清单中放�
 go build ./cmd/mcm
 ```
 
+## Docker E2E
+
+使用一次干净的 Docker 构建运行 Linux 端到端测试：
+
+```bash
+docker build --target e2e .
+```
+
+测试会构建并调用真实的 `mcm` 二进制，使用隔离的 `HOME`。它覆盖公开 CLI 工作流、全部支持的目标文件以及 stdout/stderr 警告契约，不会挂载任何宿主机配置。
+
 ## 首次使用
 
 ```bash
