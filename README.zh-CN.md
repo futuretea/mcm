@@ -4,7 +4,7 @@
 
 MCM 是一个本地 Go CLI，用于管理一份公开的 MCP server 清单，并在 macOS 和 Linux 上将其渲染为多个 MCP 客户端的用户级配置。
 
-它支持 Cursor、Codex、Claude Code、VS Code、Qoder CLI、Qoder IDE、OpenCode、[philschmid/mcp-cli](https://github.com/philschmid/mcp-cli) 和 mcpc。
+它支持 Cursor、Codex、Claude Code、VS Code、Qoder CLI、OpenCode、[philschmid/mcp-cli](https://github.com/philschmid/mcp-cli) 和 mcpc。Qoder IDE 仅支持生成配置文件，尚未独立验证 IDE 运行时是否加载该文件。
 
 ## 范围
 
@@ -21,7 +21,7 @@ MCM 仅接受公开的 `command`、`args` 和 `url` 值。不要在清单中放�
 仓库通过 `.tool-versions` 固定 Go 1.26.5。
 
 ```bash
-go build ./cmd/mcm
+go build -o ./mcm ./cmd/mcm
 ```
 
 ## Docker E2E
@@ -37,21 +37,21 @@ docker build --target e2e .
 ## 首次使用
 
 ```bash
-mcm init
-mcm server add --name filesystem --command npx --arg -y --arg @modelcontextprotocol/server-filesystem
-mcm server add --name remote-tools --url https://example.test/mcp
-mcm validate
-mcm server list
-mcm plan --target cursor --target codex
-mcm apply --target cursor --target codex --yes
-mcm status --target cursor --target codex
+./mcm init
+./mcm server add --name filesystem --command npx --arg -y --arg @modelcontextprotocol/server-filesystem
+./mcm server add --name remote-tools --url https://example.test/mcp
+./mcm validate
+./mcm server list
+./mcm plan --target cursor --target codex
+./mcm apply --target cursor --target codex --yes
+./mcm status --target cursor --target codex
 ```
 
 `plan`、`apply` 和 `status` 至少需要一个显式的 `--target`。重复的 target 会按稳定顺序去重。
 
 交互式 `apply` 会请求一次 `yes` 确认。非交互环境必须传入 `--yes`。
 
-可使用 `mcm --help` 或 `mcm <command> --help` 查看命令和参数。`server add` 只创建新名称；替换已有 server 定义请使用 `server update`。
+可使用 `./mcm --help` 或 `./mcm <command> --help` 查看命令和参数。`server add` 只创建新名称；替换已有 server 定义请使用 `server update`。如希望直接执行 `mcm`，请将二进制移动到 `PATH` 中的目录。
 
 ## 全局清单路径参数
 
@@ -82,7 +82,7 @@ mcm --home /absolute/mcm-root --config /absolute/manifest.yaml server add --name
 | `codex` | `~/.codex/config.toml` |
 | `vs-code` | 需要清单中的 `targets.vs-code.path` 或 `--path` |
 | `qoder-cli` | `~/.qoder/settings.json` |
-| `qoder-ide` | `~/.qoder/mcp.json` |
+| `qoder-ide` | `~/.qoder/mcp.json`（仅生成文件；尚未验证 IDE 运行时加载） |
 | `opencode` | `~/.config/opencode/opencode.json`，或唯一存在的 `.jsonc` 同级文件 |
 | `mcp-cli` | `~/.config/mcp/mcp_servers.json` |
 | `mcpc` | 所选 MCM 根目录的 `exports/mcpc.json` |
@@ -113,3 +113,7 @@ targets:
 - `recover` 只根据 journal 调和 MCM 的所有权 state；它绝不会写入原生客户端配置。
 - MCM 会在写入前重新检查清单和目标文件内容。不合作的外部写入者仍可能在最后一次检查后、rename 前修改文件；MCM 会在每次 apply 时警告，且不声称能够消除这个平台级窗口。
 - MCM 写入时会重新序列化选中的原生配置文件。已有格式和 JSONC 注释可能变化；`plan` 与 `apply` 会在写入前给出警告。
+
+## 许可证
+
+MCM 以 [MIT License](LICENSE) 发布。

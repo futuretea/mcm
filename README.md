@@ -4,7 +4,7 @@
 
 MCM is a local Go CLI for managing one public MCP server manifest and rendering it into multiple user-level MCP client configurations on macOS and Linux.
 
-It supports Cursor, Codex, Claude Code, VS Code, Qoder CLI, Qoder IDE, OpenCode, [philschmid/mcp-cli](https://github.com/philschmid/mcp-cli), and mcpc.
+It supports Cursor, Codex, Claude Code, VS Code, Qoder CLI, OpenCode, [philschmid/mcp-cli](https://github.com/philschmid/mcp-cli), and mcpc. Qoder IDE has file-rendering support only; its runtime loading behavior has not been independently verified.
 
 ## Scope
 
@@ -21,7 +21,7 @@ MCM only accepts public `command`, `args`, and `url` values. Do not put credenti
 The repository pins Go 1.26.5 in `.tool-versions`.
 
 ```bash
-go build ./cmd/mcm
+go build -o ./mcm ./cmd/mcm
 ```
 
 ## Docker E2E
@@ -37,21 +37,21 @@ The suite builds and invokes the real `mcm` binary with an isolated `HOME`. It c
 ## First use
 
 ```bash
-mcm init
-mcm server add --name filesystem --command npx --arg -y --arg @modelcontextprotocol/server-filesystem
-mcm server add --name remote-tools --url https://example.test/mcp
-mcm validate
-mcm server list
-mcm plan --target cursor --target codex
-mcm apply --target cursor --target codex --yes
-mcm status --target cursor --target codex
+./mcm init
+./mcm server add --name filesystem --command npx --arg -y --arg @modelcontextprotocol/server-filesystem
+./mcm server add --name remote-tools --url https://example.test/mcp
+./mcm validate
+./mcm server list
+./mcm plan --target cursor --target codex
+./mcm apply --target cursor --target codex --yes
+./mcm status --target cursor --target codex
 ```
 
 `plan`, `apply`, and `status` require at least one explicit `--target`. Repeated targets are deduplicated in stable target order.
 
 Interactive `apply` asks for one `yes` confirmation. Non-interactive usage requires `--yes`.
 
-Use `mcm --help` or `mcm <command> --help` to discover commands and flags. `server add` only creates a new name; use `server update` to replace an existing definition.
+Use `./mcm --help` or `./mcm <command> --help` to discover commands and flags. `server add` only creates a new name; use `server update` to replace an existing definition. Move the binary to a directory on your `PATH` if you prefer to invoke it as `mcm`.
 
 ## Global manifest location flags
 
@@ -82,7 +82,7 @@ mcm --home /absolute/mcm-root --config /absolute/manifest.yaml server add --name
 | `codex` | `~/.codex/config.toml` |
 | `vs-code` | Requires manifest `targets.vs-code.path` or `--path` |
 | `qoder-cli` | `~/.qoder/settings.json` |
-| `qoder-ide` | `~/.qoder/mcp.json` |
+| `qoder-ide` | `~/.qoder/mcp.json` (file rendering only; runtime loading is unverified) |
 | `opencode` | `~/.config/opencode/opencode.json` or its sole existing `.jsonc` sibling |
 | `mcp-cli` | `~/.config/mcp/mcp_servers.json` |
 | `mcpc` | Selected MCM root `exports/mcpc.json` |
@@ -113,3 +113,7 @@ targets:
 - `recover` only reconciles MCM ownership state from its journal; it never writes a native client configuration.
 - MCM rechecks the manifest and target content before a write. A non-cooperating external writer can still modify a file after that last check and before rename; MCM warns on every apply and does not claim to eliminate that platform-level window.
 - MCM reserializes selected native configuration files when it writes them. Existing formatting and JSONC comments may change; `plan` and `apply` warn before writing.
+
+## License
+
+MCM is available under the [MIT License](LICENSE).
